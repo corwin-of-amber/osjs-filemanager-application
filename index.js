@@ -308,12 +308,14 @@ const createApplication = (core, proc, win, $content) => {
 
   const {pathJoin} = core.make('osjs/fs');
   const vfs = core.make('osjs/vfs');
-  const bus = core.make('osjs/event-handler', 'FileManager');
+  const bus = core.make('osjs/event-emitter', 'FileManager');
   const dialog = createDialog(bus, core, proc, win);
   const a = app(state(bus, core, proc, win),
     actions(bus, core, proc, win),
     view(bus, core, proc, win),
     $content);
+
+  win.bus = bus;
 
   const getFileIcon = file => file.icon || core.make('osjs/fs').icon(file);
   const refresh = (fileOrWatch) => {
@@ -444,8 +446,8 @@ const createApplication = (core, proc, win, $content) => {
     win.setState('loading', true);
     const message = `Loading ${path}`;
 
-    a.setStatus(message);
-    win.setTitle(`${title} - ${message}`);
+    /*a.setStatus(message);
+    win.setTitle(`${title} - ${message}`);*/
 
     let files;
 
@@ -544,6 +546,8 @@ const createApplication = (core, proc, win, $content) => {
     });
   });
 
+  bus.on('refresh', () => refresh());
+
   win.on('drop', (ev, data, files) => {
     if (files.length) {
       Promise.all(files.map(upload))
@@ -595,6 +599,8 @@ osjs.register(applicationName, (core, args, options, metadata) => {
     .on('destroy', () => proc.destroy())
     .on('render', (win) => win.focus())
     .render(($content, win) => createApplication(core, proc, win, $content));
+
+  proc.refresh = () => proc.windows.forEach((win) => win.bus.emit('refresh'));
 
   return proc;
 });
